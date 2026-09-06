@@ -13,7 +13,9 @@
 //   - primary vs. visible neutron count per event, with a ratio panel
 //   - confusion matrix: N primary neutrons vs. N visible neutrons
 //     (% of all events per cell)
-// One multi-page PDF per beam/sample combination found in the file.
+// One multi-page PDF per sample (both beams together), e.g.
+// make_mc_spectra_plots_sample1_q0Lo.pdf, make_mc_spectra_plots_sample3_full.pdf
+// -- kept separate so pages from different samples are never mixed together.
 //
 // Run:
 //   root -l -b -q 'plot_mc_spectra.C("make_mc_spectra.root")'
@@ -33,7 +35,10 @@
 #include "TStyle.h"
 
 #include <iostream>
+#include <iomanip>
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 const double kFHCPOT = 14.2283e20;
@@ -56,10 +61,10 @@ namespace
   void DrawBeamLabel(const std::string& text)
   {
     if (text.empty()) return;
-    const double y = 0.96;
+    const double y = 0.92;
     const size_t potPos = text.find(" POT ");
     if (potPos == std::string::npos) {
-      TLatex t; t.SetNDC(); t.SetTextSize(0.042); t.SetTextFont(62);
+      TLatex t; t.SetNDC(); t.SetTextSize(0.045); t.SetTextFont(62);
       t.SetTextAlign(31);
       t.DrawLatex(0.93, y, text.c_str());
       return;
@@ -337,7 +342,8 @@ namespace
   }
 
   void ProcessSample(TFile* f, const std::string& beam, const std::string& sample,
-                      const TString& pdf, bool& isFirst)
+                      const TString& pdf, bool& isFirst,
+                      std::map<std::pair<std::string,std::string>, double>& visibilityTable)
   {
     const std::string path = beam + "/" + sample;
     TDirectory* dir = dynamic_cast<TDirectory*>(f->Get(path.c_str()));
@@ -361,6 +367,7 @@ namespace
     const double pctVisible = (totalPrim > 0) ? 100.0 * totalVis / totalPrim : 0.0;
     std::cout << label << ": visible/primary = " << pctVisible << "%  ("
                << totalVis << " / " << totalPrim << ")\n";
+    visibilityTable[{beam, sample}] = pctVisible;
 
     // Shape comparison: each histogram scaled to its own 100%, so the
     // overlay compares KE *shape* rather than absolute rate.
@@ -419,7 +426,7 @@ namespace
 }
 
 void plot_mc_spectra(const char* infile = "make_mc_spectra.root",
-                      const char* outpdf = "make_mc_spectra_plots.pdf")
+                      const char* outpdf_prefix = "make_mc_spectra_plots")
 {
   TFile* f = TFile::Open(infile);
   if (!f || f->IsZombie()) { std::cerr << "Cannot open " << infile << "\n"; return; }
@@ -427,19 +434,40 @@ void plot_mc_spectra(const char* infile = "make_mc_spectra.root",
   const std::vector<std::string> beams   = {"FHC", "RHC"};
   const std::vector<std::string> samples = {"sample1_q0Lo", "sample3_full"};
 
-  const TString pdf = outpdf;
-  bool isFirst = true;
+  // One PDF per sample (all beams for that sample together), so pages from
+  // different samples never end up mixed in the same file.
+  std::map<std::pair<std::string,std::string>, double> visibilityTable;
+  for (const auto& sample : samples) {
+    const TString pdf = TString::Format("%s_%s.pdf", outpdf_prefix, sample.c_str());
+    bool isFirst = true;
 
-  for (const auto& beam : beams)
-    for (const auto& sample : samples)
-      ProcessSample(f, beam, sample, pdf, isFirst);
+    for (const auto& beam : beams)
+      ProcessSample(f, beam, sample, pdf, isFirst, visibilityTable);
 
-  if (!isFirst) {
-    // Close the multi-page PDF (ROOT convention: an empty last c->Print(pdf+")")).
-    TCanvas dummy;
-    dummy.Print(pdf + ")");
+    if (!isFirst) {
+      // Close the multi-page PDF (ROOT convention: an empty last c->Print(pdf+")")).
+      TCanvas dummy;
+      dummy.Print(pdf + ")");
+    }
+    std::cout << "Saved to " << pdf << "\n";
   }
 
   f->Close();
-  std::cout << "Saved to " << outpdf << "\n";
+
+  // ── Neutron visibility summary table ──────────────────────────────────────
+  // "All Interactions" = sample3_full (no q0 cut).
+  // "Low Hadronic Interactions" = sample1_q0Lo -- NOTE: as currently defined
+  // in make_mc_spectra.C this cut is q0 < 0.150 GeV (150 MeV), not the
+  // 100 MeV named in this table's header. Fix the cut upstream, or relabel
+  // this header, to make the two agree.
+  auto getPct = [&](const char* b, const char* s) -> double {
+    auto it = visibilityTable.find({b, s});
+    return (it != visibilityTable.end()) ? it->second : 0.0;
+  };
+  std::cout << "\nNeutron Visibility\t\tAll Interactions\tLow Hadronic Interactions (<100 MeV)\n";
+  for (const char* beam : {"RHC", "FHC"}) {
+    std::cout << beam << "\t\t\t"
+               << TString::Format("%.2f%%", getPct(beam, "sample3_full")) << "\t\t\t"
+               << TString::Format("%.2f%%", getPct(beam, "sample1_q0Lo")) << "\n";
+  }
 }

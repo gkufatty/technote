@@ -8,7 +8,7 @@ void make_mc_spectra()
 }
 #else
 
-#include "../cuts.C"
+#include "../../cuts.C"
 
 #include "TFile.h"
 #include "TH2.h"

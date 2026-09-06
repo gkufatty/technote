@@ -16,6 +16,9 @@
 // One multi-page PDF per sample (both beams together), e.g.
 // make_mc_spectra_plots_sample1_q0Lo.pdf, make_mc_spectra_plots_sample3_full.pdf
 // -- kept separate so pages from different samples are never mixed together.
+// Plus one more PDF, make_mc_spectra_plots_prongs_per_neutron_overlay.pdf,
+// with one page per beam overlaying "prongs per visible neutron" for the
+// full sample against the low-hadronic-energy sample.
 //
 // Run:
 //   root -l -b -q 'plot_mc_spectra.C("make_mc_spectra.root")'
@@ -260,6 +263,8 @@ namespace
     if (total > 0) h->Scale(100.0 / total);
     h->GetXaxis()->SetTitle("Prongs per Visible Neutron");
     h->GetYaxis()->SetTitle("Percentage of neutrons");
+    h->GetXaxis()->SetBinLabel(1, "1"); h->GetXaxis()->SetBinLabel(2, "2");
+    h->GetXaxis()->SetBinLabel(3, "3+");
 
     TCanvas* c = new TCanvas(canvName, "", 800, 650);
     c->SetLeftMargin(0.15); c->SetBottomMargin(0.14);
@@ -271,6 +276,99 @@ namespace
 
     if (isFirst) { c->Print(pdf+"("); isFirst = false; } else c->Print(pdf);
     delete c;
+  }
+
+  // ── Prongs-per-neutron overlay: full sample vs. low-hadronic-energy region ─
+  void DrawProngMultiplicitySampleOverlay(TH1D* hFull, TH1D* hLowE,
+                                           const std::string& beamPOT,
+                                           const TString& canvName,
+                                           const TString& pdf, bool& isFirst)
+  {
+    // Pastel line palette (ColorBrewer "Pastel1"-style), solid, no fill.
+    const Int_t colFull = TColor::GetColor(179, 205, 227); // pastel blue
+    const Int_t colLowE = TColor::GetColor(251, 180, 174); // pastel pink
+
+    auto toPercent = [](TH1D* h) {
+      if (!h) return;
+      const double total = h->Integral(0, h->GetNbinsX()+1);
+      if (total > 0) h->Scale(100.0 / total);
+    };
+    toPercent(hFull); toPercent(hLowE);
+
+    auto stylePastel = [](TH1D* h, Int_t col) {
+      if (!h) return;
+      h->SetLineColor(col);
+      h->SetLineStyle(1); // solid
+      h->SetLineWidth(3);
+      h->SetFillStyle(0);
+      h->SetStats(0);
+      h->GetXaxis()->SetTitleSize(0.050); h->GetYaxis()->SetTitleSize(0.050);
+      h->GetXaxis()->SetLabelSize(0.042); h->GetYaxis()->SetLabelSize(0.042);
+    };
+    stylePastel(hFull, colFull);
+    stylePastel(hLowE, colLowE);
+
+    auto labelProngBins = [](TH1D* h) {
+      if (!h) return;
+      h->GetXaxis()->SetTitle("Prongs per Visible Neutron");
+      h->GetYaxis()->SetTitle("Percentage of neutrons");
+      h->GetXaxis()->SetBinLabel(1, "1"); h->GetXaxis()->SetBinLabel(2, "2");
+      h->GetXaxis()->SetBinLabel(3, "3+");
+    };
+    labelProngBins(hFull);
+    labelProngBins(hLowE);
+
+    TCanvas* c = new TCanvas(canvName, "", 800, 650);
+    c->SetLeftMargin(0.15); c->SetBottomMargin(0.14);
+
+    double ymax = 0;
+    if (hFull) ymax = std::max(ymax, hFull->GetMaximum());
+    if (hLowE) ymax = std::max(ymax, hLowE->GetMaximum());
+    TH1D* hFirst = hFull ? hFull : hLowE;
+    if (hFirst) { hFirst->SetMaximum(ymax * 1.35); hFirst->SetMinimum(0); hFirst->Draw("HIST"); }
+    if (hLowE && hLowE != hFirst) hLowE->Draw("HIST SAME");
+
+    TLegend* leg = new TLegend(0.48, 0.68, 0.93, 0.88);
+    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
+    if (hFull) leg->AddEntry(hFull, "Full sample",              "l");
+    if (hLowE) leg->AddEntry(hLowE, "VisE<150 MeV", "l");
+    leg->Draw();
+
+    DrawBeamLabel(beamPOT);
+    DrawWatermark();
+
+    if (isFirst) { c->Print(pdf+"("); isFirst = false; } else c->Print(pdf);
+    delete c;
+  }
+
+  // One PDF, one page per beam: overlays "prongs per visible neutron" for
+  // the full sample against the low-hadronic-energy sample.
+  void PlotProngMultiplicityOverlay(TFile* f, const TString& outpdf)
+  {
+    bool isFirst = true;
+    for (const char* beam : {"FHC", "RHC"}) {
+      const std::string pathFull = std::string(beam) + "/sample3_full";
+      const std::string pathLowE = std::string(beam) + "/sample1_q0Lo";
+      TDirectory* dirFull = dynamic_cast<TDirectory*>(f->Get(pathFull.c_str()));
+      TDirectory* dirLowE = dynamic_cast<TDirectory*>(f->Get(pathLowE.c_str()));
+      if (!dirFull || !dirLowE) {
+        std::cerr << "Missing directory for " << beam << " prongs-per-neutron overlay\n";
+        continue;
+      }
+      const double pot = (std::string(beam) == "FHC") ? kFHCPOT : kRHCPOT;
+      TH1D* hFull = LoadH1(dirFull, "prongs_per_visible_neutron", pot);
+      TH1D* hLowE = LoadH1(dirLowE, "prongs_per_visible_neutron", pot);
+
+      DrawProngMultiplicitySampleOverlay(hFull, hLowE, BeamPOTLabel(beam),
+                                         (std::string("c_prongs_overlay_") + beam).c_str(),
+                                         outpdf, isFirst);
+      delete hFull; delete hLowE;
+    }
+    if (!isFirst) {
+      TCanvas dummy;
+      dummy.Print(outpdf + ")");
+    }
+    std::cout << "Saved to " << outpdf << "\n";
   }
 
   // ── 2D: true neutron KE vs. matched prong's proton kinetic energy ──────────
@@ -425,7 +523,7 @@ namespace
   }
 }
 
-void plot_mc_spectra(const char* infile = "make_mc_spectra.root",
+void plot_mc_spectra(const char* infile = "make_mc_spectra_bck.root",
                       const char* outpdf_prefix = "make_mc_spectra_plots")
 {
   TFile* f = TFile::Open(infile);
@@ -451,6 +549,12 @@ void plot_mc_spectra(const char* infile = "make_mc_spectra.root",
     }
     std::cout << "Saved to " << pdf << "\n";
   }
+
+  // Cross-sample overlay: full sample vs. low-hadronic region, one page
+  // per beam, kept in its own PDF since it isn't part of either per-sample
+  // file above.
+  const TString overlayPdf = TString::Format("%s_prongs_per_neutron_overlay.pdf", outpdf_prefix);
+  PlotProngMultiplicityOverlay(f, overlayPdf);
 
   f->Close();
 

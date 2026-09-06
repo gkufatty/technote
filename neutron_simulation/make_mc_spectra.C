@@ -1,5 +1,5 @@
 // Run:
-// cafe -bq --numubarccinc --neutron_multiplicity -s 50 make_neutron_spectra_q0.C
+// cafe -bq --numubarccinc --neutron_multiplicity -s 50 make_mc_spectra.C
 
 #ifdef __CINT__
 void make_mc_spectra()
@@ -52,8 +52,11 @@ namespace
     loader.SetSpillCut(kStandardSpillCuts);
 
     const ana::Binning kBinNeutronKE    = ana::Binning::Simple(40, 0.0, 100.0);  // MeV, full range
-    const ana::Binning kBinKE = ana::Binning::Simple(40, 0.0, 80.0);
-    const ana::Binning kBinE    = ana::Binning::Simple(40, 0.0, 80.0);
+    // Coarser than kBinNeutronKE: the 2D KE-vs-protonKE correlation is
+    // sparsest exactly where it's most populated (low KE), so finer bins
+    // there just spread MC statistics thinner and produce visual noise.
+    const ana::Binning kBinKE = ana::Binning::Simple(20, 0.0, 80.0);
+    const ana::Binning kBinE    = ana::Binning::Simple(20, 0.0, 80.0);
 
     // ── all primary GENIE neutrons (pre-FSI truth list) ────────────────────
     Spectrum sKE_prim_all(loader,
@@ -91,7 +94,7 @@ namespace
       fullCut, kNoShift, Wei);
 
     // ── how many prongs each visible neutron produces (one entry/neutron) ───
-    const ana::Binning kBinProngsPerNeutron = ana::Binning::Simple(6, 0.5, 6.5);
+    const ana::Binning kBinProngsPerNeutron = ana::Binning::Simple(3, 0.5, 3.5); // 1, 2, 3+
     Spectrum sProngsPerNeutron(loader,
       MultiVarHistAxis("Prongs per visible neutron", kBinProngsPerNeutron,
                        MakeProngsPerVisibleNeutronMV()),

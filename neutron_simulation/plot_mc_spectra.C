@@ -17,8 +17,9 @@
 // make_mc_spectra_plots_sample1_q0Lo.pdf, make_mc_spectra_plots_sample3_full.pdf
 // -- kept separate so pages from different samples are never mixed together.
 // Plus one more PDF, make_mc_spectra_plots_prongs_per_neutron_overlay.pdf,
-// with one page per beam overlaying "prongs per visible neutron" for the
-// full sample against the low-hadronic-energy sample.
+// a single page split into two side-by-side panels (FHC left, RHC right),
+// each overlaying "prongs per visible neutron" for the full sample against
+// the low-hadronic-energy sample.
 //
 // Run:
 //   root -l -b -q 'plot_mc_spectra.C("make_mc_spectra.root")'
@@ -219,6 +220,15 @@ namespace
     StyleHist(h2,     TColor::GetColor(119,198,110), 1, 3, false);
     StyleHist(h3plus, TColor::GetColor(229,115,115), 1, 3, false);
 
+    // Each curve rescaled to unit area (counts / total), so the three
+    // multiplicity classes compare KE *shape* rather than absolute rate.
+    auto normalizeShape = [](TH1D* h) {
+      if (!h) return;
+      const double total = h->Integral(0, h->GetNbinsX()+1);
+      if (total > 0) h->Scale(1.0 / total);
+    };
+    normalizeShape(h1); normalizeShape(h2); normalizeShape(h3plus);
+
     TCanvas* c = new TCanvas(canvName, "", 800, 650);
     c->SetLeftMargin(0.15); c->SetBottomMargin(0.14);
 
@@ -230,7 +240,7 @@ namespace
     TH1D* hFirst = h1 ? h1 : (h2 ? h2 : h3plus);
     if (hFirst) {
       hFirst->GetXaxis()->SetTitle("Visible neutron KE [MeV]");
-      hFirst->GetYaxis()->SetTitle("Neutrons");
+      hFirst->GetYaxis()->SetTitle("Counts (normalized)");
       hFirst->SetMaximum(ymax * 1.45); hFirst->SetMinimum(0);
       hFirst->Draw("HIST");
     }
@@ -279,21 +289,23 @@ namespace
   }
 
   // ── Prongs-per-neutron overlay: full sample vs. low-hadronic-energy region ─
-  void DrawProngMultiplicitySampleOverlay(TH1D* hFull, TH1D* hLowE,
-                                           const std::string& beamPOT,
-                                           const TString& canvName,
-                                           const TString& pdf, bool& isFirst)
+  // Drawn into a caller-supplied pad, so two beams can share one canvas.
+  void DrawProngMultiplicitySampleOverlayPad(TPad* pad, TH1D* hFull, TH1D* hLowE,
+                                              const std::string& beamPOT)
   {
+    pad->cd();
+    pad->SetLeftMargin(0.16); pad->SetBottomMargin(0.14); pad->SetRightMargin(0.04);
+
     // Pastel line palette (ColorBrewer "Pastel1"-style), solid, no fill.
     const Int_t colFull = TColor::GetColor(179, 205, 227); // pastel blue
     const Int_t colLowE = TColor::GetColor(251, 180, 174); // pastel pink
 
-    auto toPercent = [](TH1D* h) {
+    auto normalizeShape = [](TH1D* h) {
       if (!h) return;
       const double total = h->Integral(0, h->GetNbinsX()+1);
-      if (total > 0) h->Scale(100.0 / total);
+      if (total > 0) h->Scale(1.0 / total);
     };
-    toPercent(hFull); toPercent(hLowE);
+    normalizeShape(hFull); normalizeShape(hLowE);
 
     auto stylePastel = [](TH1D* h, Int_t col) {
       if (!h) return;
@@ -311,15 +323,12 @@ namespace
     auto labelProngBins = [](TH1D* h) {
       if (!h) return;
       h->GetXaxis()->SetTitle("Prongs per Visible Neutron");
-      h->GetYaxis()->SetTitle("Percentage of neutrons");
+      h->GetYaxis()->SetTitle("Counts (normalized)");
       h->GetXaxis()->SetBinLabel(1, "1"); h->GetXaxis()->SetBinLabel(2, "2");
       h->GetXaxis()->SetBinLabel(3, "3+");
     };
     labelProngBins(hFull);
     labelProngBins(hLowE);
-
-    TCanvas* c = new TCanvas(canvName, "", 800, 650);
-    c->SetLeftMargin(0.15); c->SetBottomMargin(0.14);
 
     double ymax = 0;
     if (hFull) ymax = std::max(ymax, hFull->GetMaximum());
@@ -328,25 +337,29 @@ namespace
     if (hFirst) { hFirst->SetMaximum(ymax * 1.35); hFirst->SetMinimum(0); hFirst->Draw("HIST"); }
     if (hLowE && hLowE != hFirst) hLowE->Draw("HIST SAME");
 
-    TLegend* leg = new TLegend(0.48, 0.68, 0.93, 0.88);
-    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
-    if (hFull) leg->AddEntry(hFull, "Full sample",              "l");
-    if (hLowE) leg->AddEntry(hLowE, "VisE<150 MeV", "l");
+    TLegend* leg = new TLegend(0.42, 0.68, 0.95, 0.88);
+    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.045);
+    if (hFull) leg->AddEntry(hFull, "Full sample",   "l");
+    if (hLowE) leg->AddEntry(hLowE, "VisE<150 MeV",  "l");
     leg->Draw();
 
     DrawBeamLabel(beamPOT);
     DrawWatermark();
-
-    if (isFirst) { c->Print(pdf+"("); isFirst = false; } else c->Print(pdf);
-    delete c;
+    pad->Update();
   }
 
-  // One PDF, one page per beam: overlays "prongs per visible neutron" for
-  // the full sample against the low-hadronic-energy sample.
+  // One PDF, one page total: a single canvas split into two side-by-side
+  // pads, FHC on the left and RHC on the right, each overlaying "prongs per
+  // visible neutron" for the full sample against the low-hadronic-energy
+  // sample.
   void PlotProngMultiplicityOverlay(TFile* f, const TString& outpdf)
   {
-    bool isFirst = true;
-    for (const char* beam : {"FHC", "RHC"}) {
+    TCanvas* c = new TCanvas("c_prongs_overlay_fhc_rhc", "", 1400, 650);
+    c->Divide(2, 1, 0.006, 0.006);
+
+    const char* beams[2] = {"FHC", "RHC"};
+    for (int i = 0; i < 2; ++i) {
+      const char* beam = beams[i];
       const std::string pathFull = std::string(beam) + "/sample3_full";
       const std::string pathLowE = std::string(beam) + "/sample1_q0Lo";
       TDirectory* dirFull = dynamic_cast<TDirectory*>(f->Get(pathFull.c_str()));
@@ -355,19 +368,17 @@ namespace
         std::cerr << "Missing directory for " << beam << " prongs-per-neutron overlay\n";
         continue;
       }
-      const double pot = (std::string(beam) == "FHC") ? kFHCPOT : kRHCPOT;
+      const double pot = (i == 0) ? kFHCPOT : kRHCPOT;
       TH1D* hFull = LoadH1(dirFull, "prongs_per_visible_neutron", pot);
       TH1D* hLowE = LoadH1(dirLowE, "prongs_per_visible_neutron", pot);
 
-      DrawProngMultiplicitySampleOverlay(hFull, hLowE, BeamPOTLabel(beam),
-                                         (std::string("c_prongs_overlay_") + beam).c_str(),
-                                         outpdf, isFirst);
+      TPad* pad = (TPad*)c->cd(i + 1);
+      DrawProngMultiplicitySampleOverlayPad(pad, hFull, hLowE, BeamPOTLabel(beam));
       delete hFull; delete hLowE;
     }
-    if (!isFirst) {
-      TCanvas dummy;
-      dummy.Print(outpdf + ")");
-    }
+
+    c->Print(outpdf); // single page -- no open/close bracket dance needed
+    delete c;
     std::cout << "Saved to " << outpdf << "\n";
   }
 

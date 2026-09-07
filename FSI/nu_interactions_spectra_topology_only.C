@@ -37,7 +37,7 @@ using namespace ana;
 //   RHC: TrueHadVisE_{1N,g2N,1N1pi,1p0pi,2p0pi,1pNpi}_RHC
 //     -- kFSI_2PlusProtons_NPion (>=2p, >=1pi) is dropped for RHC: it's
 //        the highest-multiplicity category and needs more hadronic energy
-//        than RHC's other categories to produce, so within RHC's 0-200
+//        than RHC's other categories to produce, so within RHC's 0-100
 //        MeV display range (tuned for the CCQE-like 1N/g2N peak) it was
 //        mostly flat tail, not a meaningful curve.
 // Both beams get kFSI_1Neutron_1Pion (0p, 1n, 1pi) on its own: it's FHC's
@@ -93,10 +93,10 @@ void nu_interactions_spectra_topology_only()
   // Same bin width (10 MeV) for both beams, different upper edge: RHC's
   // FSI activity is concentrated at lower HadVisE than FHC's (see the
   // proton x pion table in check_final_states.C -- RHC is dominated by
-  // proton-free, pion-free CCQE-like events), so 200 MeV covers RHC's
+  // proton-free, pion-free CCQE-like events), so 100 MeV covers RHC's
   // populated range while FHC uses 350 MeV.
   const Binning bins_HadVisE_FHC = Binning::Simple(35, 0, 350); // MeV
-  const Binning bins_HadVisE_RHC = Binning::Simple(20, 0, 200); // MeV
+  const Binning bins_HadVisE_RHC = Binning::Simple(10, 0, 100); // MeV
 
   // ana::kNumuHadVisMeV (selection_vars.h) = kNumuHadVisE(sr)*1000.0, i.e.
   // the same standard CAFAna visible-hadronic-energy Var used elsewhere in
@@ -125,7 +125,7 @@ void nu_interactions_spectra_topology_only()
   // =========================================================
   // No 2+p_Npi_RHC: that category (>=2 protons AND >=1 pion) is the
   // highest-multiplicity of the six and needs more hadronic energy than
-  // the other RHC categories to produce -- within RHC's 0-200 MeV display
+  // the other RHC categories to produce -- within RHC's 0-100 MeV display
   // range (tuned for the CCQE-like 1N/g2N peak) it's mostly just tail, not
   // a meaningful curve. Dropped rather than shown near-zero across the
   // whole range.

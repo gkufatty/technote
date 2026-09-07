@@ -4,7 +4,7 @@
 //   - visible hadronic energy (ana::kNumuHadVisMeV, MeV) spectrum split by
 //     FSI grouping (see kFSI_* in cuts.C), inclusive spectrum drawn as a
 //     gray background, one page per beam, plotted up to 350 MeV (FHC) /
-//     200 MeV (RHC). The category list is DIFFERENT per beam -- each only
+//     100 MeV (RHC). The category list is DIFFERENT per beam -- each only
 //     carries categories that are actually populated for that beam (per
 //     check_final_states.C's proton x pion table and top-final-state
 //     list; see CategoriesForBeam() below and the matching comment in
@@ -222,11 +222,11 @@ namespace
       return;
     }
 
-    // FHC binned to 350 MeV, RHC to 200 MeV (see nu_interactions_spectra_
+    // FHC binned to 350 MeV, RHC to 100 MeV (see nu_interactions_spectra_
     // topology_only.C's bins_HadVisE_FHC/RHC) -- RHC's FSI activity sits
     // at lower HadVisE (dominated by proton-free, pion-free CCQE-like
     // events per check_final_states.C's proton x pion table).
-    const double xMax = (beam == "FHC") ? 350.0 : 200.0;
+    const double xMax = (beam == "FHC") ? 350.0 : 100.0;
     DrawTopologyOverlay(hIncl, cats, hists, BeamPOTLabel(beam),
                         "c_topology_"+beam, pdf, isFirst, xMax);
 

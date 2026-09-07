@@ -1,17 +1,17 @@
 // plot_mc_spectra.C
 // Plots for make_mc_spectra.root (output of make_mc_spectra.C):
-//   - primary GENIE neutron KE vs. visible ("left a prong") neutron KE,
+//   - GENIE GENIE neutron KE vs. visible ("left a prong") neutron KE,
 //     0-250 MeV, with a visible/primary ratio panel, plus a shape-normalized
 //     (each scaled to its own 100%) version of the same comparison
-//   - printed to stdout: percent of primary neutrons that are visible
+//   - printed to stdout: percent of GENIE neutrons that are visible
 //     (integral ratio, per beam/sample)
 //   - true neutron KE vs. matched prong's true energy (2D correlation)
 //   - visible neutron KE split by how many prongs that neutron produced
 //     (1, 2, >=3 -- prongs grouped by matching parent truth 4-momentum)
 //   - prong-multiplicity count histogram (how many neutrons produce
 //     1 / 2 / 3+ prongs)
-//   - primary vs. visible neutron count per event, with a ratio panel
-//   - confusion matrix: N primary neutrons vs. N visible neutrons
+//   - GENIE vs. visible neutron count per event, with a ratio panel
+//   - confusion matrix: N GENIE neutrons vs. N visible neutrons
 //     (% of all events per cell)
 // One multi-page PDF per sample (both beams together), e.g.
 // make_mc_spectra_plots_sample1_q0Lo.pdf, make_mc_spectra_plots_sample3_full.pdf
@@ -175,7 +175,7 @@ namespace
 
     TLegend* leg = new TLegend(0.52, 0.68, 0.93, 0.88);
     leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.044);
-    if (hPrim) leg->AddEntry(hPrim, "All primary neutrons",       "l");
+    if (hPrim) leg->AddEntry(hPrim, "All GENIE neutrons",       "l");
     if (hVis)  leg->AddEntry(hVis,  "Visible Neutrons",     "lf");
     leg->Draw();
     DrawBeamLabel(beamSample);
@@ -357,6 +357,14 @@ namespace
     TCanvas* c = new TCanvas("c_prongs_overlay_fhc_rhc", "", 1400, 650);
     c->Divide(2, 1, 0.006, 0.006);
 
+    // Held until after c->Print() below: TH1::Draw() only registers the
+    // pointer as a pad primitive, it doesn't copy the data, so deleting
+    // these before Print() (as this loop used to, right after each beam's
+    // draw call) left both pads pointing at freed memory by the time the
+    // canvas was actually painted/printed -- which is why this PDF came
+    // out blank.
+    TH1D* toDelete[4] = {nullptr, nullptr, nullptr, nullptr};
+
     const char* beams[2] = {"FHC", "RHC"};
     for (int i = 0; i < 2; ++i) {
       const char* beam = beams[i];
@@ -371,13 +379,14 @@ namespace
       const double pot = (i == 0) ? kFHCPOT : kRHCPOT;
       TH1D* hFull = LoadH1(dirFull, "prongs_per_visible_neutron", pot);
       TH1D* hLowE = LoadH1(dirLowE, "prongs_per_visible_neutron", pot);
+      toDelete[2*i] = hFull; toDelete[2*i+1] = hLowE;
 
       TPad* pad = (TPad*)c->cd(i + 1);
       DrawProngMultiplicitySampleOverlayPad(pad, hFull, hLowE, BeamPOTLabel(beam));
-      delete hFull; delete hLowE;
     }
 
     c->Print(outpdf); // single page -- no open/close bracket dance needed
+    for (TH1D* h : toDelete) delete h;
     delete c;
     std::cout << "Saved to " << outpdf << "\n";
   }
@@ -404,9 +413,9 @@ namespace
     delete c;
   }
 
-  // ── Confusion matrix: N primary neutrons vs. N visible neutrons ────────────
+  // ── Confusion matrix: N GENIE neutrons vs. N visible neutrons ────────────
   // Globally normalized: every cell divided by the total event count, so a
-  // cell reads as "% of ALL events with exactly this many primary neutrons
+  // cell reads as "% of ALL events with exactly this many GENIE neutrons
   // AND exactly this many visible neutrons" (the whole matrix sums to 100%).
   void DrawConfusionMatrix(TH2* h2, const std::string& beamSample,
                             const TString& canvName,
@@ -431,9 +440,9 @@ namespace
     c->SetLeftMargin(0.15); c->SetBottomMargin(0.14); c->SetRightMargin(0.17);
     h2->SetStats(0);
     h2->SetTitle("");
-    h2->GetXaxis()->SetTitle("N primary neutrons");
+    h2->GetXaxis()->SetTitle("N GENIE neutrons");
     h2->GetYaxis()->SetTitle("N visible neutrons");
-    h2->GetXaxis()->SetRangeUser(0.5, 5.5);  // N primary >= 1 by construction now
+    h2->GetXaxis()->SetRangeUser(0.5, 5.5);  // N GENIE >= 1 by construction now
     h2->GetYaxis()->SetRangeUser(-0.5, 5.5);
     h2->GetXaxis()->SetTitleSize(0.045); h2->GetXaxis()->SetLabelSize(0.038);
     h2->GetYaxis()->SetTitleSize(0.045); h2->GetYaxis()->SetLabelSize(0.038);
@@ -469,7 +478,7 @@ namespace
     DrawKEOverlay(hPrimAll, hVisAll, "Prod 5.1 POT", beamPOT,
                   0.0, ("c_ke_"+beam+"_"+sample).c_str(), pdf, isFirst);
 
-    // Percent of primary neutrons that are visible (integral ratio, not
+    // Percent of GENIE neutrons that are visible (integral ratio, not
     // POT-scale-dependent -- both histograms carry the same scale factor).
     const double totalPrim = hPrimAll ? hPrimAll->Integral(0, hPrimAll->GetNbinsX()+1) : 0.0;
     const double totalVis  = hVisAll  ? hVisAll ->Integral(0, hVisAll ->GetNbinsX()+1) : 0.0;
@@ -516,7 +525,7 @@ namespace
 
     delete h1prong; delete h2prong; delete h3plus; delete hNProng;
 
-    // ── Neutron count per event: primary (GENIE) vs. visible ────────────────
+    // ── Neutron count per event: GENIE (GENIE) vs. visible ────────────────
     TH1D* hNPrimPerEvent = LoadH1(dir, "n_primary_neutrons_per_event", pot);
     TH1D* hNVisPerEvent  = LoadH1(dir, "n_visible_neutrons_per_event", pot);
 
@@ -526,7 +535,7 @@ namespace
 
     delete hNPrimPerEvent; delete hNVisPerEvent;
 
-    // ── Confusion matrix: N primary neutrons vs. N visible neutrons ─────────
+    // ── Confusion matrix: N GENIE neutrons vs. N visible neutrons ─────────
     TH2* h2Confusion = LoadH2(dir, "confusion_neutron_count", pot);
     DrawConfusionMatrix(h2Confusion, beamPOT,
                         ("c_confusion_"+beam+"_"+sample).c_str(), pdf, isFirst);

@@ -1,15 +1,17 @@
 // Run:
 // cafe -bq plot_relevant_systs_ranking.C
 //
-// Reads every neutron_spectra_systs_diagnostics_*_metrics.csv produced by
-// plot_neutron_spectra_systs_diagnostics_ranking.C (across all three tiers:
-// high, medium, low) and, for the 26 systematics whitelisted in
-// RelevantSystsWhitelist.cxx, draws a single ranked bar chart of each
-// systematic's largest shape chi2 across every diagnostic and beam it was
-// evaluated in -- i.e. "how relevant is this systematic, at its most
-// sensitive diagnostic" -- color-coded by physics category (FSI/MEC/RES/
-// QE/DIS). Companion to make_neutron_spectra_systs_multiverse_filtered.C's
-// whitelist derivation.
+// q0lt100MeV variant of ../genie/plot_relevant_systs_ranking.C: reads every
+// neutron_spectra_systs_diagnostics_*_metrics.csv IN THIS FOLDER (produced
+// by this folder's make_neutron_spectra_systs_diagnostics_{high,medium,low}.C
+// + plot_neutron_spectra_systs_diagnostics_ranking.C, all restricted to
+// HadVisE < 100 MeV) and, for the 11 systematics whitelisted in
+// Q0Lt100MeVRelevantSystsWhitelist.cxx, draws a single ranked bar chart of
+// each systematic's largest shape chi2 across every diagnostic and beam it
+// was evaluated in -- same technique as ../genie/'s copy, different (smaller,
+// HadVisE < 100 MeV) whitelist. Companion to
+// make_neutron_spectra_systs_multiverse_filtered.C's whitelist derivation
+// and to relevant_systs_table_q0lt100MeV.tex's category-comparison table.
 //
 // This is a plain CSV-driven plot (no CAFAna Spectrum/SpectrumLoader
 // involved), so it only needs ROOT, not the cafana weights/cuts includes
@@ -18,7 +20,7 @@
 // Produces neutron_spectra_relevant_systs_ranking.pdf and a companion CSV
 // (neutron_spectra_relevant_systs_ranking.csv) with, per whitelisted
 // systematic: category, max shape chi2, and which (diagnostic, beam) gave
-// that max -- the same numbers behind the technote table this feeds.
+// that max -- the same numbers behind relevant_systs_table_q0lt100MeV.tex.
 
 #ifdef __CINT__
 void plot_relevant_systs_ranking()
@@ -48,11 +50,11 @@ void plot_relevant_systs_ranking()
 
 namespace
 {
-#include "RelevantSystsWhitelist.cxx"
+#include "Q0Lt100MeVRelevantSystsWhitelist.cxx"
 
   // {diagnostic label (matches the *_metrics.csv filename stem, minus the
   // "neutron_spectra_systs_diagnostics_" prefix and "_metrics.csv" suffix),
-  // physics category}.
+  // physics category}. Same 14 diagnostics as ../genie/'s copy.
   const std::vector<std::pair<std::string, std::string>> kDiagnosticFiles = {
     {"FSI_ke",        "FSI"},
     {"FSI_prongs",    "FSI"},
@@ -155,7 +157,7 @@ void plot_relevant_systs_ranking()
   std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) { return a.chi2 > b.chi2; });
 
   std::cout << "Ranked " << rows.size() << " / " << kRelevantSysts.size()
-            << " whitelisted systematics (largest shape chi2 first):\n";
+            << " whitelisted systematics (largest shape chi2 first, HadVisE < 100 MeV):\n";
   for (const Row& r : rows) {
     std::cout << "  " << r.syst << " [" << r.category << "] chi2=" << r.chi2
               << " (" << r.diagnostic << ", " << r.beam << ")\n";
@@ -181,7 +183,7 @@ void plot_relevant_systs_ranking()
     h.GetXaxis()->SetBinLabel(i + 1, rows[i].syst.c_str());
   }
   h.SetTitle("Relevant GENIE systematics, ranked by largest shape #chi^{2} "
-             "across all diagnostics (FHC+RHC)");
+             "across all diagnostics (FHC+RHC), HadVisE < 100 MeV");
   h.GetYaxis()->SetTitle("max #chi^{2}_{shape} (any diagnostic, either beam)");
   h.GetXaxis()->LabelsOption("v");
   h.GetXaxis()->SetLabelSize(0.030);

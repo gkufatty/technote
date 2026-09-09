@@ -40,6 +40,8 @@ void plot_neutron_spectra_systs_diagnostics_ranking()
 #include "TPad.h"
 #include "TLine.h"
 #include "TLegend.h"
+#include "TLatex.h"
+#include "TGaxis.h"
 #include "TH1D.h"
 #include "TStyle.h"
 #include "TString.h"
@@ -74,12 +76,31 @@ namespace
     return names;
   }
 
-  TH1D* LoadHist(TDirectory* topDir, const std::string& subpath, const std::string& objName)
+  TH1D* LoadHist(TDirectory* topDir, const std::string& subpath, const std::string& objName,
+                 double* potOut = nullptr)
   {
     TDirectory* parentDir = topDir->GetDirectory(subpath.c_str());
     if (!parentDir) return nullptr;
     std::unique_ptr<Spectrum> spec = Spectrum::LoadFrom(parentDir, objName.c_str());
-    return spec->ToTH1(spec->POT());
+    const double pot = spec->POT();
+    if (potOut) *potOut = pot;
+    return spec->ToTH1(pot);
+  }
+
+  // ── NOvA watermark, matching nu_interactions_plot_topology_only.C's
+  // DrawWatermark so every technote plot carries the same identification.
+  // The beam/POT label used to be a separate corner label (DrawBeamLabel)
+  // but is now folded directly into each page's title via BeamPOTLabel(). ──
+  void DrawWatermark()
+  {
+    TLatex t; t.SetNDC(); t.SetTextSize(0.031); t.SetTextColor(kGray+1);
+    t.DrawLatex(0.2, 0.755, "NOvA ND Simulation");
+    t.DrawLatex(0.2, 0.730, "Work In Progress");
+  }
+
+  std::string BeamPOTLabel(const std::string& beam, double pot)
+  {
+    return TString::Format("Prod 5.1 - %s POT %.0fe20", beam.c_str(), pot / 1e20).Data();
   }
 
   // Rescales `h` in place to have the same total as `nominal`, and returns
@@ -241,7 +262,7 @@ namespace
   }
 
   void DrawShapePage(TCanvas& c, const std::string& pdfName,
-                      const std::string& beam, const RankedSyst& r,
+                      const std::string& beam, double pot, const RankedSyst& r,
                       TH1D* nomSrc, TDirectory* systsDir,
                       const std::string& objName, const std::string& varLabel,
                       const std::string& category,
@@ -283,27 +304,26 @@ namespace
     const double ymax = std::max({nom->GetMaximum(), up->GetMaximum(), down->GetMaximum()});
     nom->SetMaximum(ymax * 1.3);
     nom->SetMinimum(0.0);
-    nom->SetTitle(TString::Format(
-      "#splitline{%s [%s]: %s (shape only)  "
-      "#chi^{2}_{shape,+1#sigma}=%.2f  #chi^{2}_{shape,-1#sigma}=%.2f  "
-      "#Delta#LT x#GT_{+1#sigma}=%+.4f  #Delta#LT x#GT_{-1#sigma}=%+.4f}"
-      "{#chi^{2}_{raw,+1#sigma}=%.2f  #chi^{2}_{raw,-1#sigma}=%.2f   "
-      "rate: %+.2f%% / %+.2f%%   #Delta#sigma^{2}: %+.4f / %+.4f}",
-      beam.c_str(), category.c_str(), r.name.c_str(), r.chi2ShapeUp, r.chi2ShapeDown, r.dMeanUp, r.dMeanDown,
-      r.chi2RawUp, r.chi2RawDown, r.rateChangeUp, r.rateChangeDown, r.dVarUp, r.dVarDown));
+    // Full chi2/rate/mean/variance breakdown is still in the companion CSV
+    // (WriteCSVRow); the beam/POT identification that used to be a separate
+    // corner label (DrawBeamLabel) is now folded into this single title.
+    nom->SetTitle(TString::Format("%s - %s",
+      r.name.c_str(), BeamPOTLabel(beam, pot).c_str()));
     nom->GetXaxis()->SetLabelSize(0.0);
 
     nom->Draw("hist");
     up->Draw("hist same");
     down->Draw("hist same");
 
-    TLegend leg(0.60, 0.68, 0.88, 0.86);
+    TLegend leg(0.60, 0.63, 0.88, 0.81);
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
     leg.AddEntry(nom.get(), "nominal",              "l");
-    leg.AddEntry(up.get(),  "+1#sigma (shape only)", "l");
-    leg.AddEntry(down.get(),"-1#sigma (shape only)", "l");
+    leg.AddEntry(up.get(),  "+1#sigma (rescaled)", "l");
+    leg.AddEntry(down.get(),"-1#sigma (rescaled)", "l");
     leg.Draw();
+
+    DrawWatermark();
 
     pad2.cd();
     double axMax = 1.0;
@@ -368,7 +388,8 @@ namespace
       return;
     }
 
-    std::unique_ptr<TH1D> nominal(LoadHist(topDir, "nominal", v.objName));
+    double pot = 0.0;
+    std::unique_ptr<TH1D> nominal(LoadHist(topDir, "nominal", v.objName, &pot));
     if (!nominal) {
       std::cerr << "[WARN] no nominal/" << v.objName << " under " << beam << "/" << v.category << "\n";
       return;
@@ -393,7 +414,7 @@ namespace
 
     TDirectory* systsDir = topDir->GetDirectory("systs");
     for (const RankedSyst& r : ranked) {
-      DrawShapePage(c, pdfName, beam, r, nominal.get(), systsDir, v.objName, v.varLabel, v.category, v.binLabels);
+      DrawShapePage(c, pdfName, beam, pot, r, nominal.get(), systsDir, v.objName, v.varLabel, v.category, v.binLabels);
       WriteCSVRow(csv, beam, r);
     }
   }
@@ -403,7 +424,11 @@ void plot_neutron_spectra_systs_diagnostics_ranking()
 {
   gStyle->SetOptStat(0);
   gStyle->SetTitleFontSize(0.032);
+  gStyle->SetTitleY(0.97);  // nudge the splitline chi2/rate title down from the pad's top edge
   TH1::AddDirectory(kFALSE);
+  // Force scientific notation on event-count y-axes, same as
+  // nu_interactions_plot_topology_only.C.
+  TGaxis::SetMaxDigits(3);
 
   // Each tier's production script writes its own ROOT file (see
   // RootFileForCategory) so any subset of {high,medium,low} can be run
@@ -430,7 +455,7 @@ void plot_neutron_spectra_systs_diagnostics_ranking()
     return;
   }
 
-  TCanvas c("c", "c", 800, 600);
+  TCanvas c("c", "c", 800, 700);
 
   // Short axis labels for the two categorical diagnostics -- see
   // ../genie/NeutronMultSystDiagnostics.cxx's kFinalStateTopologyBinVar for

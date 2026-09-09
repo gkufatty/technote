@@ -1,15 +1,17 @@
 // Run:
 // cafe -bq plot_neutron_spectra_systs_multiverse_filtered.C
 //
-// Reads make_neutron_spectra_systs_multiverse_filtered.root (produced by
-// this folder's make_neutron_spectra_systs_multiverse_filtered.C -- the
-// 26-systematic, chi2>5-filtered GENIE multiverse) and draws, for each beam
-// and each of the five spectra it saved (ntrue_per_event, ngenie_per_event,
-// nsel_per_event, hadvise_q0, final_state_topology), three pages. Modeled
-// directly on ../../../spectrums/plot_neutron_spectra_systs_multiverse_filtered.C
-// -- same technique, just reading this folder's directory layout
-// (beam/relevant_multiverse/<objName> instead of
-// beam/topo4_All_q0lt100MeV/<objName>) and five spectra instead of three.
+// q0lt100MeV variant of ../genie/plot_neutron_spectra_systs_multiverse_filtered.C:
+// reads this folder's make_neutron_spectra_systs_multiverse_filtered.root
+// (produced by this folder's make_neutron_spectra_systs_multiverse_filtered.C
+// -- the 11-systematic, chi2>5-filtered GENIE multiverse restricted to
+// HadVisE < 100 MeV; see Q0Lt100MeVRelevantSystsWhitelist.cxx for why only
+// 11 of the inclusive sample's 26 relevant systematics survive this cut) and
+// draws, for each beam and each of the five spectra it saved
+// (ntrue_per_event, ngenie_per_event, nsel_per_event, hadvise_q0,
+// final_state_topology), three pages. Identical technique and directory
+// layout (beam/relevant_multiverse/<objName>) to ../genie/'s copy -- only
+// the input multiverse (different whitelist, different cut) differs.
 //
 //  Page A (shape): nominal (universe 0) overlaid with a +/-RMS envelope
 //    computed per bin across all thrown universes relative to nominal
@@ -149,7 +151,7 @@ namespace
   }
 
   // For final_state_topology_multiverse, the bin index alone is opaque --
-  // see NeutronMultSystDiagnostics.cxx's kFinalStateTopologyBinVar.
+  // see ../genie/NeutronMultSystDiagnostics.cxx's kFinalStateTopologyBinVar.
   void ApplyBinLabels(TH1D* h, const std::vector<std::string>& labels)
   {
     for (size_t i = 0; i < labels.size() && (int)i < h->GetNbinsX(); ++i)
@@ -157,13 +159,14 @@ namespace
   }
 
   // ── NOvA watermark and beam/POT label, matching
-  // nu_interactions_plot_topology_only.C's DrawWatermark/DrawBeamLabel so
-  // every technote plot carries the same identification. ─────────────────
+  // nu_interactions_plot_topology_only.C's DrawWatermark/DrawBeamLabel (and
+  // ../genie/'s copy of this plotter) so every technote plot carries the
+  // same identification. ───────────────────────────────────────────────────
   void DrawWatermark()
   {
     TLatex t; t.SetNDC(); t.SetTextSize(0.031); t.SetTextColor(kGray+1);
-    t.DrawLatex(0.2, 0.755, "NOvA ND Simulation");
-    t.DrawLatex(0.2, 0.730, "Work In Progress");
+    t.DrawLatex(0.2, 0.785, "NOvA ND Simulation");
+    t.DrawLatex(0.2, 0.750, "Work In Progress");
   }
 
   void DrawBeamLabel(const std::string& text)
@@ -229,11 +232,11 @@ namespace
     nom->SetMaximum(ymax * 1.3);
     nom->SetMinimum(0.0);
     nom->SetTitle(TString::Format(
-      "#splitline{%s: %s -- GENIE multiverse (26 relevant systs, shape only)  "
-      "#chi^{2}_{shape,+RMS}=%.2f  #chi^{2}_{shape,-RMS}=%.2f  "
-      "#Delta#LT x#GT_{+RMS}=%+.4f  #Delta#LT x#GT_{-RMS}=%+.4f}"
-      "{#chi^{2}_{raw,+RMS}=%.2f  #chi^{2}_{raw,-RMS}=%.2f   "
-      "rate: %+.2f%% / %+.2f%%}",
+      "#splitline{%s: %s -- GENIE multiverse (11 relevant systs, HadVisE<100MeV, shape only)  ",
+      // "#chi^{2}_{shape,+RMS}=%.2f  #chi^{2}_{shape,-RMS}=%.2f  "
+      // "#Delta#LT x#GT_{+RMS}=%+.4f  #Delta#LT x#GT_{-RMS}=%+.4f}"
+      // "{#chi^{2}_{raw,+RMS}=%.2f  #chi^{2}_{raw,-RMS}=%.2f   "
+      // "rate: %+.2f%% / %+.2f%%}",
       beam.c_str(), specLabel.c_str(), m.chi2ShapeUp, m.chi2ShapeDown, m.dMeanUp, m.dMeanDown,
       m.chi2RawUp, m.chi2RawDown, m.rateChangeUp, m.rateChangeDown));
     nom->GetXaxis()->SetLabelSize(0.0);
@@ -242,7 +245,7 @@ namespace
     up->Draw("hist same");
     down->Draw("hist same");
 
-    TLegend leg(0.56, 0.68, 0.88, 0.86);
+    TLegend leg(0.56, 0.63, 0.88, 0.86);
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
     leg.AddEntry(nom.get(), "nominal (universe 0)",  "l");
@@ -301,7 +304,7 @@ namespace
     for (auto& h : hists) ymax = std::max(ymax, h->GetMaximum());
 
     nom->SetTitle(TString::Format(
-      "%s: %s GENIE multiverse (26 relevant systs%s, %zu universes)",
+      "%s: %s GENIE multiverse (11 relevant systs, HadVisE<100MeV%s, %zu universes)",
       beam.c_str(), specLabel.c_str(),
       shapeOnly ? ", shape only -- each universe rescaled to nominal's total" : ", raw",
       hists.size()));
@@ -321,12 +324,12 @@ namespace
     nom->SetLineWidth(3);
     nom->Draw("hist same");
 
-    TLegend leg(0.55, 0.78, 0.88, 0.88);
+    TLegend leg(0.55, 0.72, 0.88, 0.88);
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
     leg.AddEntry(nom, "nominal", "l");
     if (hists.size() > 1)
-      leg.AddEntry(hists[1].get(), shapeOnly ? "GENIE universes (shape only)" : "GENIE universes (raw)", "l");
+      leg.AddEntry(hists[1].get(), shapeOnly ? "GENIE Universes (Rescaled)" : "GENIE Universes (Raw)", "l");
     leg.Draw();
 
     DrawBeamLabel(BeamPOTLabel(beam, pot));
@@ -405,8 +408,8 @@ void plot_neutron_spectra_systs_multiverse_filtered()
   const std::string csvName = "neutron_spectra_systs_multiverse_filtered_metrics.csv";
   TCanvas c("c", "c", 800, 700);
 
-  // Same short labels used in plot_neutron_spectra_systs_diagnostics_ranking.C
-  // and plot_relevant_systs_ranking.C for the categorical topology axis.
+  // Same short labels used in ../genie/'s copy for the categorical topology
+  // axis.
   const std::vector<std::string> kTopologyBinLabels = {
     "0p 1n", "0p #geq2n", "0p 1n 1#pi", "1p 0#pi",
     "#geq2p 0#pi", "1p N#pi", "#geq2p N#pi", "other/0n",
@@ -422,11 +425,11 @@ void plot_neutron_spectra_systs_multiverse_filtered()
 
   c.Print((pdfName + "[").c_str());
   for (const std::string& beam : {"FHC", "RHC"}) {
-    PlotSpectrum(fIn, c, pdfName, beam, "ntrue_per_event_multiverse",     "N true neutron prongs",   csv, kNoLabels);
-    PlotSpectrum(fIn, c, pdfName, beam, "ngenie_per_event_multiverse",    "N GENIE neutrons",        csv, kNoLabels);
-    PlotSpectrum(fIn, c, pdfName, beam, "nsel_per_event_multiverse",      "N_{NLS} per event",       csv, kNoLabels);
+    PlotSpectrum(fIn, c, pdfName, beam, "ntrue_per_event_multiverse",     "Visible Neutrons",   csv, kNoLabels);
+    PlotSpectrum(fIn, c, pdfName, beam, "ngenie_per_event_multiverse",    "GENIE Neutrons",        csv, kNoLabels);
+    PlotSpectrum(fIn, c, pdfName, beam, "nsel_per_event_multiverse",      "Neutron-Like Prongs per event",       csv, kNoLabels);
     PlotSpectrum(fIn, c, pdfName, beam, "hadvise_q0_multiverse",          "HadVisE [MeV]",           csv, kNoLabels);
-    PlotSpectrum(fIn, c, pdfName, beam, "final_state_topology_multiverse","Final-state topology bin",csv, kTopologyBinLabels);
+    PlotSpectrum(fIn, c, pdfName, beam, "final_state_topology_multiverse","FSI Topology Bin",csv, kTopologyBinLabels);
   }
   c.Print((pdfName + "]").c_str());
 

@@ -1,0 +1,89 @@
+\subsection{Robustness of the Relevant-Systematics List Under a Low-$E_{\mathrm{avail}}$ Cut}
+\label{sec:relevantSystsQ0Lt100MeV}
+
+Section~\ref{sec:relevantSystsDataDriven} derived the 26-systematic
+neutron-multiplicity whitelist from diagnostics evaluated over the fully
+inclusive sample. To check whether that list still holds in the
+low-hadronic-energy ($E_{\mathrm{avail}}<100$~MeV) region used elsewhere in
+this analysis, the same procedure -- $\pm1\sigma$ shifts compared to nominal
+via $\chi^2_{\mathrm{shape}}=\sum_i(s_i-n_i)^2/n_i$ on the rescaled shape,
+same $\chi^2_{\mathrm{shape}}>5$ threshold, same 77 systematics and 14
+diagnostics -- was repeated with every diagnostic additionally restricted to
+$E_{\mathrm{avail}}<100$~MeV. Only \textbf{11 of the 77} systematics clear
+the threshold in this restricted sample, compared to 26 inclusively, and
+every one of the 11 was already part of the inclusive whitelist -- the cut
+never promotes a new systematic to relevant, it only suppresses
+significance.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Systematics retained (of those evaluated per category), fully
+    inclusive vs.\ restricted to $E_{\mathrm{avail}}<100$~MeV.}
+    \label{table:relevantSystsCategoryCompare}
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{Category} & \textbf{Inclusive} & \textbf{$E_{\mathrm{avail}}<100$~MeV} & \textbf{Change} \\
+        \midrule
+        FSI          & 5/5  & 0/5  & all dropped \\
+        MEC          & 6/6  & 4/6  & $-2$ \\
+        RES          & 6/10 & 3/10 & $-3$ \\
+        QE           & 3/7  & 2/7  & $-1$ \\
+        DIS          & 6/40 & 2/40 & $-4$ \\
+        LowPriority  & 0/9  & 0/9  & unchanged \\
+        \midrule
+        \textbf{Total} & \textbf{26/77} & \textbf{11/77} & $-15$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The most striking change is FSI: every FSI knob drops below threshold,
+led by \texttt{hNFSI\_MFP\_2024} (mean free path) falling from
+$\chi^2_{\mathrm{shape}}=179.5$ to $2.0$ and \texttt{FormZone2024} from
+$77.3$ to $0.2$. This is physically expected rather than a fluctuation: FSI
+rescattering/absorption acts mainly by adding secondary-scattering hadronic
+activity, i.e.\ by pushing events to \emph{higher} $E_{\mathrm{avail}}$, so
+restricting to $E_{\mathrm{avail}}<100$~MeV removes almost exactly the phase
+space where FSI has any effect. MEC, RES, QE, and DIS each keep roughly
+half their inclusive members; a few (\texttt{MECShape2024AntiNu},
+\texttt{LowQ2RESSupp2020}) actually grow \emph{more} significant under the
+cut, since their shape effect is concentrated at low $E_{\mathrm{avail}}$
+rather than diluted by it.
+
+\begin{table}[htbp]
+    \centering
+    \caption{The 11 systematics retained under $E_{\mathrm{avail}}<100$~MeV,
+    with $\chi^2_{\mathrm{shape}}$ in both samples for comparison. Sorted by
+    the restricted-sample value. All 11 were already in the inclusive
+    26-systematic list (Table~\ref{table:relevantSysts}).}
+    \label{table:relevantSystsQ0Lt100MeV}
+    \begin{tabular}{p{0.26\linewidth} p{0.08\linewidth} p{0.11\linewidth} p{0.11\linewidth} p{0.28\linewidth}}
+        \toprule
+        \textbf{Systematic} & \textbf{Cat.} & \textbf{$\chi^2$ incl.} & \textbf{$\chi^2$ $<$100 MeV} & \textbf{Diagnostic ($<$100 MeV, beam)} \\
+        \midrule
+        \texttt{MECShape2024AntiNu}           & MEC & 19.5  & 34.6 & final-state topology (RHC) \\
+        \texttt{MECShape2024Nu}               & MEC & 66.4  & 30.1 & final-state topology (FHC) \\
+        \texttt{RESDeltaScaleSyst}             & RES & 55.2  & 19.8 & final-state topology (FHC) \\
+        \texttt{DISvnCC1pi\_2020}              & DIS & 166.5 & 19.4 & final-state topology (FHC) \\
+        \texttt{DISNuHadronQ1Syst}             & DIS & 184.2 & 18.7 & final-state topology (FHC) \\
+        \texttt{MECInitStateNPFrac2020Nu}      & MEC & 78.1  & 15.8 & final-state topology (FHC) \\
+        \texttt{ZNormCCQE}                     & QE  & 104.2 & 13.3 & inclusive $E_{\mathrm{avail}}$ (RHC) \\
+        \texttt{MECInitStateNPFrac2020AntiNu}  & MEC & 23.5  & 12.5 & final-state topology (RHC) \\
+        \texttt{RPAShapesupp2020}              & QE  & 29.5  & 11.6 & inclusive $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{LowQ2RESSupp2020}              & RES & 5.8   & 8.7  & final-state topology (FHC) \\
+        \texttt{MaCCRES}                       & RES & 58.5  & 7.1  & final-state topology (FHC) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+For several of these (\texttt{MECShape2024Nu}, \texttt{MaCCRES},
+\texttt{RESDeltaScaleSyst}, \texttt{LowQ2RESSupp2020}), the most sensitive
+diagnostic also shifts from $E_{\mathrm{avail}}$ itself, inclusively, to
+final-state topology once $E_{\mathrm{avail}}<100$~MeV is imposed --
+unsurprising, since compressing $E_{\mathrm{avail}}$ into a narrow window
+weakens its own shape-discriminating power, while the topology diagnostic
+is unaffected by the cut. Overall, the neutron-multiplicity GENIE
+multiverse built for the inclusive sample (Sec.~\ref{sec:relevantSystsDataDriven})
+remains a conservative superset for a low-$E_{\mathrm{avail}}$-restricted
+analysis: a multiverse built from just these 11 systematics is smaller and
+cheaper, but every systematic it needs is already covered by the
+inclusive 26.

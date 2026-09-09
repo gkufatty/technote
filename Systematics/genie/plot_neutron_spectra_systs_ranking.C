@@ -24,6 +24,7 @@ void plot_neutron_spectra_systs_ranking()
 #include "TCanvas.h"
 #include "TH1D.h"
 #include "TLine.h"
+#include "TLatex.h"
 #include "TStyle.h"
 #include "TString.h"
 
@@ -52,12 +53,37 @@ namespace
     return names;
   }
 
-  TH1D* LoadNTrueHist(TDirectory* topDir, const std::string& subpath)
+  TH1D* LoadNTrueHist(TDirectory* topDir, const std::string& subpath, double* potOut = nullptr)
   {
     TDirectory* parentDir = topDir->GetDirectory(subpath.c_str());
     if (!parentDir) return nullptr;
     std::unique_ptr<Spectrum> spec = Spectrum::LoadFrom(parentDir, "ntrue_per_event");
-    return spec->ToTH1(spec->POT());
+    const double pot = spec->POT();
+    if (potOut) *potOut = pot;
+    return spec->ToTH1(pot);
+  }
+
+  // ── NOvA watermark and beam/POT label, matching
+  // nu_interactions_plot_topology_only.C's DrawWatermark/DrawBeamLabel so
+  // every technote plot carries the same identification. ─────────────────
+  void DrawWatermark()
+  {
+    TLatex t; t.SetNDC(); t.SetTextSize(0.031); t.SetTextColor(kGray+1);
+    t.DrawLatex(0.2, 0.755, "NOvA ND Simulation");
+    t.DrawLatex(0.2, 0.730, "Work In Progress");
+  }
+
+  void DrawBeamLabel(const std::string& text)
+  {
+    if (text.empty()) return;
+    TLatex t; t.SetNDC(); t.SetTextSize(0.042); t.SetTextFont(62);
+    t.SetTextAlign(31);
+    t.DrawLatex(0.93, 0.92, text.c_str());
+  }
+
+  std::string BeamPOTLabel(const std::string& beam, double pot)
+  {
+    return TString::Format("Prod 5.1 - %s POT %.0fe20", beam.c_str(), pot / 1e20).Data();
   }
 
   struct Impact
@@ -67,10 +93,10 @@ namespace
     double down = 0.0;  // % diff at that same bin,          -1 sigma shift
   };
 
-  std::vector<Impact> RankSysts(TDirectory* topDir)
+  std::vector<Impact> RankSysts(TDirectory* topDir, double& potOut)
   {
     std::vector<Impact> out;
-    std::unique_ptr<TH1D> nominal(LoadNTrueHist(topDir, "nominal"));
+    std::unique_ptr<TH1D> nominal(LoadNTrueHist(topDir, "nominal", &potOut));
     if (!nominal) return out;
 
     TDirectory* systsDir = topDir->GetDirectory("systs");
@@ -99,7 +125,7 @@ namespace
   }
 
   void DrawRanking(TCanvas& c, const std::string& pdfName,
-                    const std::string& beam, const std::vector<Impact>& impacts)
+                    const std::string& beam, double pot, const std::vector<Impact>& impacts)
   {
     const int n = (int)impacts.size();
     if (n == 0) return;
@@ -146,6 +172,9 @@ namespace
     zero.SetLineColor(kBlack);
     zero.Draw();
 
+    DrawBeamLabel(BeamPOTLabel(beam, pot));
+    DrawWatermark();
+
     c.Print(pdfName.c_str());
   }
 }
@@ -166,13 +195,16 @@ void plot_neutron_spectra_systs_ranking()
   // mid-stream is an avoidable risk.
   const std::vector<std::string> beams = {"FHC", "RHC"};
   std::vector<std::vector<Impact>> allImpacts;
+  std::vector<double> allPOT;
   int maxN = 0;
   for (const std::string& beam : beams) {
     TDirectory* topDir = fIn->GetDirectory((beam + "/topo4_All_q0lt100MeV").c_str());
-    std::vector<Impact> impacts = topDir ? RankSysts(topDir) : std::vector<Impact>();
+    double pot = 0.0;
+    std::vector<Impact> impacts = topDir ? RankSysts(topDir, pot) : std::vector<Impact>();
     std::cout << "[" << beam << "] ranked " << impacts.size() << " systematics\n";
     maxN = std::max(maxN, (int)impacts.size());
     allImpacts.push_back(std::move(impacts));
+    allPOT.push_back(pot);
   }
 
   const std::string pdfName = "neutron_spectra_systs_ranking.pdf";
@@ -180,7 +212,7 @@ void plot_neutron_spectra_systs_ranking()
 
   c.Print((pdfName + "[").c_str());
   for (size_t i = 0; i < beams.size(); ++i)
-    DrawRanking(c, pdfName, beams[i], allImpacts[i]);
+    DrawRanking(c, pdfName, beams[i], allPOT[i], allImpacts[i]);
   c.Print((pdfName + "]").c_str());
 
   fIn->Close();

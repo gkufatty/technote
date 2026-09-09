@@ -53,6 +53,8 @@ void plot_neutron_spectra_systs_shape()
 #include "TPad.h"
 #include "TLine.h"
 #include "TLegend.h"
+#include "TLatex.h"
+#include "TGaxis.h"
 #include "TH1D.h"
 #include "TStyle.h"
 #include "TString.h"
@@ -85,12 +87,38 @@ namespace
     return names;
   }
 
-  TH1D* LoadHist(TDirectory* topDir, const std::string& subpath, const std::string& objName)
+  TH1D* LoadHist(TDirectory* topDir, const std::string& subpath, const std::string& objName,
+                 double* potOut = nullptr)
   {
     TDirectory* parentDir = topDir->GetDirectory(subpath.c_str());
     if (!parentDir) return nullptr;
     std::unique_ptr<Spectrum> spec = Spectrum::LoadFrom(parentDir, objName.c_str());
-    return spec->ToTH1(spec->POT());
+    const double pot = spec->POT();
+    if (potOut) *potOut = pot;
+    return spec->ToTH1(pot);
+  }
+
+  // ── NOvA watermark and beam/POT label, matching
+  // nu_interactions_plot_topology_only.C's DrawWatermark/DrawBeamLabel so
+  // every technote plot carries the same identification. ─────────────────
+  void DrawWatermark()
+  {
+    TLatex t; t.SetNDC(); t.SetTextSize(0.031); t.SetTextColor(kGray+1);
+    t.DrawLatex(0.2, 0.755, "NOvA ND Simulation");
+    t.DrawLatex(0.2, 0.730, "Work In Progress");
+  }
+
+  void DrawBeamLabel(const std::string& text)
+  {
+    if (text.empty()) return;
+    TLatex t; t.SetNDC(); t.SetTextSize(0.042); t.SetTextFont(62);
+    t.SetTextAlign(31);
+    t.DrawLatex(0.93, 0.92, text.c_str());
+  }
+
+  std::string BeamPOTLabel(const std::string& beam, double pot)
+  {
+    return TString::Format("Prod 5.1 - %s POT %.0fe20", beam.c_str(), pot / 1e20).Data();
   }
 
   // Rescales `h` in place to have the same total as `nominal`, and returns
@@ -284,7 +312,7 @@ namespace
   }
 
   void DrawShapePage(TCanvas& c, const std::string& pdfName,
-                      const std::string& beam, const RankedSyst& r,
+                      const std::string& beam, double pot, const RankedSyst& r,
                       TH1D* nomSrc, TDirectory* systsDir,
                       const std::string& objName, const std::string& varLabel)
   {
@@ -353,6 +381,9 @@ namespace
     leg.AddEntry(down.get(),"-1#sigma (shape only)", "l");
     leg.Draw();
 
+    DrawBeamLabel(BeamPOTLabel(beam, pot));
+    DrawWatermark();
+
     pad2.cd();
     double axMax = 1.0;
     for (int b = 1; b <= nom->GetNbinsX(); ++b)
@@ -387,7 +418,7 @@ namespace
   }
 
   void DrawDiagnosticsPage(TCanvas& c, const std::string& pdfName,
-                            const std::string& beam, const RankedSyst& r,
+                            const std::string& beam, double pot, const RankedSyst& r,
                             TH1D* nomSrc, TDirectory* systsDir,
                             const std::string& objName, const std::string& varLabel)
   {
@@ -450,6 +481,9 @@ namespace
     leg.AddEntry(cdfDown.get(),"-1#sigma (shape only)", "l");
     leg.Draw();
 
+    DrawBeamLabel(BeamPOTLabel(beam, pot));
+    DrawWatermark();
+
     pad2.cd();
     double axMax = 1.0;
     for (int b = 1; b <= curv->GetNbinsX(); ++b)
@@ -493,7 +527,8 @@ namespace
       return;
     }
 
-    std::unique_ptr<TH1D> nominal(LoadHist(topDir, "nominal", objName));
+    double pot = 0.0;
+    std::unique_ptr<TH1D> nominal(LoadHist(topDir, "nominal", objName, &pot));
     if (!nominal) return;
 
     const std::vector<RankedSyst> ranked = RankSysts(topDir, nominal.get(), objName);
@@ -502,8 +537,8 @@ namespace
 
     TDirectory* systsDir = topDir->GetDirectory("systs");
     for (const RankedSyst& r : ranked) {
-      DrawShapePage(c, pdfName, beam, r, nominal.get(), systsDir, objName, varLabel);
-      DrawDiagnosticsPage(c, pdfName, beam, r, nominal.get(), systsDir, objName, varLabel);
+      DrawShapePage(c, pdfName, beam, pot, r, nominal.get(), systsDir, objName, varLabel);
+      DrawDiagnosticsPage(c, pdfName, beam, pot, r, nominal.get(), systsDir, objName, varLabel);
       WriteCSVRow(csv, beam, r);
     }
   }
@@ -512,8 +547,12 @@ namespace
 void plot_neutron_spectra_systs_shape()
 {
   gStyle->SetOptStat(0);
-  gStyle->SetTitleFontSize(0.032);  // two-line splitline titles need headroom, not size
+  gStyle->SetTitleFontSize(0.032);
+  gStyle->SetTitleY(0.97);  // nudge the splitline chi2/rate title down from the pad's top edge  // two-line splitline titles need headroom, not size
   TH1::AddDirectory(kFALSE);
+  // Force scientific notation on event-count y-axes, same as
+  // nu_interactions_plot_topology_only.C.
+  TGaxis::SetMaxDigits(3);
 
   TFile* fIn = TFile::Open("make_neutron_spectra_systs.root", "READ");
   if (!fIn || fIn->IsZombie()) {
@@ -521,7 +560,7 @@ void plot_neutron_spectra_systs_shape()
     return;
   }
 
-  TCanvas c("c", "c", 800, 600);
+  TCanvas c("c", "c", 800, 700);
 
   // {object name in the ROOT file, axis label, output PDF, output CSV}.
   // ntrue_per_event keeps its original filenames untouched -- see header

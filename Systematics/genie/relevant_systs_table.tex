@@ -1,0 +1,102 @@
+\subsection{Data-Driven Relevance of Neutron-Multiplicity Systematics}
+\label{sec:relevantSystsDataDriven}
+
+Table~\ref{table:neutronSysts} ranked the 2024-tune cross-section
+systematics by \emph{expected} relevance, from the mechanisms established
+in the sections above. To turn that expectation into a measurement, every
+systematic in that ranking (77 in total, across the FSI, MEC, RES, QE, and
+DIS/hadronization categories) was shifted independently by
+$\pm1\sigma$ and compared against nominal in the diagnostic variable(s)
+Table~\ref{table:neutronSystDiagnostics} identifies for its category
+(visible-neutron kinetic energy, prong multiplicity, and the
+primary-vs-visible neutron count for FSI; $E_{\mathrm{avail}}$ and the
+final-state topology for MEC/RES/DIS; the clean-CCQE and inclusive
+$E_{\mathrm{avail}}$ rate for QE), for both FHC and RHC. For each
+(systematic, diagnostic, beam) triple the shifted spectrum was rescaled to
+nominal's total and compared bin-by-bin via
+$\chi^2_{\mathrm{shape}} = \sum_i (s_i-n_i)^2/n_i$, isolating genuine shape
+distortion from a pure rate change.
+
+Table~\ref{table:relevantSysts} lists the 26 systematics that reach
+$\chi^2_{\mathrm{shape}} > 5$ in at least one diagnostic in at least one
+beam -- a threshold chosen to keep only unambiguous, clearly-nonzero
+effects rather than the marginal ($\chi^2\sim1$--$5$) middle ground, which
+contributes little to the resulting covariance while roughly tripling the
+size of the systematic ensemble. Of the 77 systematics evaluated, 51 fall
+below this threshold everywhere and are dropped from the neutron-
+multiplicity multiverse; all 9 of the LowPriority-tier systematics (COH,
+NC-elastic, radiative, and 2nd-class-current knobs) are among those
+dropped, confirming the expectation from
+Table~\ref{table:neutronSysts} for that tier, with one near-miss worth
+noting: the $\Delta$ radiative $\eta$-decay branching knob (\texttt{RDecBR1eta})
+reaches $\chi^2_{\mathrm{shape}}=3.6$ in the true-multiplicity sanity check
+(FHC) -- real, but still short of the cut.
+
+Two systematics Table~\ref{table:neutronSysts} lists as highest-priority
+for setting the RES target-nucleon $p$-vs-$n$ ratio
+(\texttt{RESvpvnRatioNuXSecSyst}/\texttt{RESvpvnRatioNubarXSecSyst}) do not
+reach this threshold in any RES diagnostic ($\chi^2_{\mathrm{shape}}\leq2.3$
+throughout), nor does the $\Delta$-decay angular-distribution knob
+(\texttt{Theta\_Delta2Npi}, $\chi^2_{\mathrm{shape}}\leq1.0$) -- despite the
+physical mechanism each is meant to control being exactly the one this
+analysis is most sensitive to. This may reflect the size of the
+$\pm1\sigma$ variation itself in the 2024 tune rather than an absence of
+physical impact, and is worth revisiting if that tune changes.
+
+\begin{table}[htbp]
+    \centering
+    \caption{The 26 (of 77) cross-section systematics that reach
+    $\chi^2_{\mathrm{shape}}>5$ in at least one diagnostic, either beam --
+    the ensemble retained for the neutron-multiplicity GENIE multiverse.
+    ``Diagnostic (beam)'' names where the largest shift was observed.}
+    \label{table:relevantSysts}
+    \begin{tabular}{p{0.28\linewidth} p{0.10\linewidth} p{0.14\linewidth} p{0.30\linewidth}}
+        \toprule
+        \textbf{Systematic} & \textbf{Category} & \textbf{$\chi^2_{\mathrm{shape}}$} & \textbf{Diagnostic (beam)} \\
+        \midrule
+        \texttt{DISNuHadronQ1Syst}        & DIS & 184.2 & final-state topology (FHC) \\
+        \texttt{hNFSI\_MFP\_2024}          & FSI & 179.5 & $N_{\mathrm{primary}}-N_{\mathrm{visible}}$ (FHC) \\
+        \texttt{DISvnCC1pi\_2020}          & DIS & 166.5 & final-state topology (FHC) \\
+        \texttt{ZNormCCQE}                 & QE  & 104.2 & inclusive $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{MECInitStateNPFrac2020Nu}  & MEC & 78.1  & final-state topology (FHC) \\
+        \texttt{FormZone2024}              & FSI & 77.3  & $N_{\mathrm{primary}}-N_{\mathrm{visible}}$ (FHC) \\
+        \texttt{MECShape2024Nu}            & MEC & 66.4  & $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{MaCCRES}                   & RES & 58.5  & $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{RESDeltaScaleSyst}         & RES & 55.2  & $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{MvCCRES}                   & RES & 31.9  & $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{RPAShapesupp2020}          & QE  & 29.5  & inclusive $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{MECInitStateNPFrac2020AntiNu} & MEC & 23.5 & final-state topology (RHC) \\
+        \texttt{MECShape2024AntiNu}        & MEC & 19.5  & $E_{\mathrm{avail}}$ (RHC) \\
+        \texttt{DISvpCC2pi\_2020}          & DIS & 17.0  & final-state topology (FHC) \\
+        \texttt{DISvnCC2pi\_2020}          & DIS & 16.6  & final-state topology (FHC) \\
+        \texttt{RESOtherScaleSyst}         & RES & 14.5  & final-state topology (FHC) \\
+        \texttt{DISNuBarHadronQ0Syst}      & DIS & 14.3  & final-state topology (RHC) \\
+        \texttt{MECEnuShape2020Nu}         & MEC & 14.0  & final-state topology (FHC) \\
+        \texttt{hNFSI\_FateFracEV1\_2024}  & FSI & 12.2  & $N_{\mathrm{primary}}-N_{\mathrm{visible}}$ (FHC) \\
+        \texttt{MaNCRES}                   & RES & 9.6   & final-state topology (FHC) \\
+        \texttt{MECEnuShape2020AntiNu}     & MEC & 9.2   & final-state topology (RHC) \\
+        \texttt{ZExpAxialFFSyst2020\_EV1}  & QE  & 8.7   & inclusive $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{hNFSI\_FateFracEV2\_2024}  & FSI & 8.2   & $N_{\mathrm{primary}}-N_{\mathrm{visible}}$ (FHC) \\
+        \texttt{DISvpCC3pi\_2020}          & DIS & 6.3   & final-state topology (FHC) \\
+        \texttt{LowQ2RESSupp2020}          & RES & 5.8   & $E_{\mathrm{avail}}$ (FHC) \\
+        \texttt{hNFSI\_FateFracEV3\_2024}  & FSI & 5.5   & $N_{\mathrm{primary}}-N_{\mathrm{visible}}$ (FHC) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+By category: FSI keeps all 5 systematics evaluated, MEC keeps all 6 --
+both fully validate Table~\ref{table:neutronSysts}'s highest-priority
+billing. RES keeps 6 of 10 (dropping the two $p$-vs-$n$ ratio knobs, the
+$\Delta$-decay-angle knob, and \texttt{MvNCRES}). QE keeps 3 of 7,
+dominated by \texttt{ZNormCCQE}'s rate effect (Sec.~\ref{sec:...}: a
+$\pm16\%$ shift in the clean-CCQE-like sample and $\pm6$--$8\%$ in the
+overall CC rate by beam). DIS keeps only 6 of 40 -- the two
+hadronic-energy-scale knobs (\texttt{DISNuHadronQ1Syst}/
+\texttt{DISNuBarHadronQ0Syst}) and the four largest CC multi-pion knobs;
+the remaining 34 soft-pion and AGKY/Bodek-Yang hadronization knobs are
+negligible in this selection, several bin-for-bin identical to nominal.
+Nearly every retained systematic is far more visible in the final-state
+topology or FSI confusion diagnostic than in the corresponding
+multiplicity-count histogram, which is the quantitative version of this
+technote's qualitative claim that the true-multiplicity histogram alone is
+necessary but not sufficient (Sec.~\ref{sec:...}).
